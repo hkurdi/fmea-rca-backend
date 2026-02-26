@@ -105,6 +105,9 @@ async def add_fishbone_node(
     fishbone = await db.get(FishboneDiagram, fishbone_id)
     if not fishbone or fishbone.case_id != case_id:
         raise HTTPException(status_code=404, detail="Fishbone not found")
+    
+    if fishbone.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized")
 
     node = FishboneNode(
         fishbone_id=fishbone_id,
@@ -128,9 +131,19 @@ async def delete_fishbone_node(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    node = await db.get(FishboneNode, node_id)
-    if not node or node.fishbone_id != fishbone_id:
-        raise HTTPException(status_code=404, detail="Node not found")
+    result = await db.execute(
+        select(FishboneNode)
+        .join(FishboneDiagram)
+        .where(
+            FishboneNode.id == node_id,
+            FishboneDiagram.id == fishbone_id,
+            FishboneDiagram.user_id == current_user.id
+        )
+    )
+    node = result.scalar_one_or_none()
+    if not node:
+        raise HTTPException(status_code=404, detail="Node not found or unauthorized")
+    
     await db.delete(node)
     return success_response(message="Node deleted")
 

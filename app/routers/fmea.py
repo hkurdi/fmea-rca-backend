@@ -76,6 +76,10 @@ async def update_process_map(
     submission = result.scalar_one_or_none()
     if not submission:
         raise AppException("Process map not found", 404)
+    
+    if submission.user_id != current_user.id:
+        raise AppException("Not authorized to edit this submission", 403)
+    
     await check_case_and_lock(db, case_id, submission, current_user.id)
     if data.content:
         submission.content = data.content
@@ -136,6 +140,10 @@ async def update_hazard_analysis(
     submission = result.scalar_one_or_none()
     if not submission:
         raise AppException("Hazard analysis not found", 404)
+    
+    if submission.user_id != current_user.id:
+        raise AppException("Not authorized to edit this submission", 403)
+    
     await check_case_and_lock(db, case_id, submission, current_user.id)
     if data.rows:
         submission.rows = data.rows
@@ -196,6 +204,10 @@ async def update_fmea_pip(
     submission = result.scalar_one_or_none()
     if not submission:
         raise AppException("FMEA PIP not found", 404)
+    
+    if submission.user_id != current_user.id:
+        raise AppException("Not authorized to edit this submission", 403)
+    
     await check_case_and_lock(db, case_id, submission, current_user.id)
     if data.content:
         submission.content = data.content

@@ -103,6 +103,7 @@ async def delete_case(
     if not case:
         raise AppException("Case not found", 404)
     case.is_active = False
+    await db.commit()
     return success_response(message="Case deactivated")
 
 

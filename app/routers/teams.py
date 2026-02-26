@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+from sqlalchemy.orm import selectinload
 from app.database import get_db
 from app.models.user import User
 from app.models.team import Team, TeamMember
@@ -17,7 +18,7 @@ async def get_all_teams(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Team))
+    result = await db.execute(select(Team).options(selectinload(Team.members)))
     teams = result.scalars().all()
     return success_response(data=[TeamResponse.model_validate(t).model_dump() for t in teams])
 
@@ -28,7 +29,9 @@ async def get_team(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Team).where(Team.id == team_id))
+    result = await db.execute(
+        select(Team).where(Team.id == team_id).options(selectinload(Team.members))
+    )
     team = result.scalar_one_or_none()
     if not team:
         raise AppException("Team not found", 404)
@@ -44,11 +47,15 @@ async def create_team(
     team = Team(name=data.name, course_id=data.course_id)
     db.add(team)
     await db.flush()
-    await db.refresh(team)
+    result = await db.execute(
+        select(Team).options(selectinload(Team.members)).where(Team.id == team.id)
+    )
+    team = result.scalar_one()
+    await db.commit()
     return success_response(
-        data=TeamResponse.model_validate(team).model_dump(),
-        message="Team created",
-        status_code=201,
+        data=TeamResponse.model_validate(team).model_dump(), 
+        message="Team created", 
+        status_code=201
     )
 
 
@@ -59,12 +66,19 @@ async def update_team(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_instructor),
 ):
-    result = await db.execute(select(Team).where(Team.id == team_id))
+    result = await db.execute(
+        select(Team).where(Team.id == team_id).options(selectinload(Team.members))
+    )
     team = result.scalar_one_or_none()
     if not team:
         raise AppException("Team not found", 404)
+    
     if data.name:
         team.name = data.name
+    
+    await db.commit()
+    await db.refresh(team)
+    
     return success_response(
         data=TeamResponse.model_validate(team).model_dump(),
         message="Team updated",
@@ -81,7 +95,9 @@ async def delete_team(
     team = result.scalar_one_or_none()
     if not team:
         raise AppException("Team not found", 404)
+    
     await db.delete(team)
+    await db.commit()
     return success_response(message="Team deleted")
 
 
@@ -107,7 +123,9 @@ async def add_member(
     member = TeamMember(team_id=team_id, user_id=data.user_id)
     db.add(member)
     await db.flush()
+    await db.commit()
     await db.refresh(member)
+    
     return success_response(
         data=TeamMemberResponse.model_validate(member).model_dump(),
         message="Member added",
@@ -128,5 +146,7 @@ async def remove_member(
     member = result.scalar_one_or_none()
     if not member:
         raise AppException("Member not found", 404)
+    
     await db.delete(member)
+    await db.commit()
     return success_response(message="Member removed")

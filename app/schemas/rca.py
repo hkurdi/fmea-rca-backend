@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from app.models.rca import NodeLevel
 
@@ -19,7 +19,7 @@ class FishboneNodeResponse(BaseModel):
     order_index: int
     children: list["FishboneNodeResponse"] = []
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 FishboneNodeResponse.model_rebuild()
@@ -47,7 +47,7 @@ class FishboneDiagramResponse(BaseModel):
     updated_at: datetime
     nodes: list[FishboneNodeResponse] = []
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class FiveWhysCreate(BaseModel):
@@ -74,7 +74,7 @@ class FiveWhysResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RcaPipCreate(BaseModel):
@@ -98,4 +98,4 @@ class RcaPipResponse(BaseModel):
     created_at: datetime
     updated_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

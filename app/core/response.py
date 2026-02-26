@@ -1,24 +1,33 @@
-from typing import Any
+import json
+from datetime import datetime
+from enum import Enum
 from fastapi.responses import JSONResponse
 
 
-def success_response(data: Any = None, message: str = "ok", status_code: int = 200) -> JSONResponse:
+class CustomEncoder(json.JSONEncoder):
+    def default(self, o):
+        if isinstance(o, datetime):
+            return o.isoformat()
+        if isinstance(o, Enum):
+            return o.value
+        return super().default(o)
+
+
+def success_response(data=None, message: str = "Success", status_code: int = 200):
     return JSONResponse(
         status_code=status_code,
-        content={
-            "success": True,
-            "data": data,
-            "message": message,
-        },
+        content=json.loads(json.dumps(
+            {"success": True, "data": data, "message": message},
+            cls=CustomEncoder,
+        )),
     )
 
 
-def error_response(message: str = "error", status_code: int = 400, data: Any = None) -> JSONResponse:
+def error_response(message: str = "Error", status_code: int = 400, data=None):
     return JSONResponse(
         status_code=status_code,
-        content={
-            "success": False,
-            "data": data,
-            "message": message,
-        },
+        content=json.loads(json.dumps(
+            {"success": False, "data": data, "message": message},
+            cls=CustomEncoder,
+        )),
     )

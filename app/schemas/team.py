@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 
 
@@ -21,7 +21,7 @@ class TeamMemberResponse(BaseModel):
     user_id: int
     joined_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TeamResponse(BaseModel):
@@ -31,4 +31,4 @@ class TeamResponse(BaseModel):
     created_at: datetime
     members: list[TeamMemberResponse] = []
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)

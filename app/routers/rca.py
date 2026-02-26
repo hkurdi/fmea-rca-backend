@@ -1,109 +1,262 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
+
 from app.database import get_db
+from app.core.response import success_response, error_response
+from app.core.dependencies import get_current_user
 from app.models.user import User
-from app.models.scoring import Score
-from app.schemas.scoring import ScoreUpdate, ScoreResponse
-from app.core.dependencies import get_current_user, get_current_instructor
-from app.core.response import success_response
-from app.core.exceptions import AppException
-from app.services.scoring_service import (
-    submit_process_map,
-    submit_hazard_analysis,
-    submit_fishbone,
-    submit_five_whys,
-    submit_fmea_pip,
-    submit_rca_pip,
-    instructor_approve,
+from app.models.rca import FishboneDiagram, FishboneNode, FiveWhys, RcaPip
+from app.models.case import Case
+from app.schemas.rca import (
+    FishboneDiagramCreate, FishboneDiagramUpdate,
+    FishboneNodeCreate,
+    FiveWhysCreate, FiveWhysUpdate,
+    RcaPipCreate, RcaPipUpdate,
 )
 
 router = APIRouter()
 
 
-@router.post("/submit/process-map/{submission_id}")
-async def submit_process_map_route(
-    submission_id: int,
-    course_id: int,
+def _serialize(obj):
+    if obj is None:
+        return None
+    return {c.name: getattr(obj, c.name) for c in obj.__table__.columns}
+
+@router.post("/{case_id}/rca/fishbone", status_code=201)
+async def create_fishbone(
+    case_id: int,
+    data: FishboneDiagramCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    score = await submit_process_map(db, submission_id, current_user.id, course_id)
-    return success_response(data=ScoreResponse.model_validate(score).model_dump(), message="Process map submitted")
+    case = await db.get(Case, case_id)
+    if not case or not case.is_active:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    existing = await db.execute(
+        select(FishboneDiagram).where(
+            FishboneDiagram.case_id == case_id,
+            FishboneDiagram.user_id == current_user.id,
+        )
+    )
+    if existing.scalar_one_or_none():
+        raise HTTPException(status_code=409, detail="Fishbone already exists")
+
+    fishbone = FishboneDiagram(
+        case_id=case_id,
+        user_id=current_user.id,
+        problem_statement=data.problem_statement,
+    )
+    db.add(fishbone)
+    await db.flush()
+    await db.refresh(fishbone)
+    return success_response(data=_serialize(fishbone), status_code=201)
 
 
-@router.post("/submit/hazard-analysis/{submission_id}")
-async def submit_hazard_analysis_route(
-    submission_id: int,
-    course_id: int,
+@router.get("/{case_id}/rca/fishbone")
+async def get_fishbone(
+    case_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    score = await submit_hazard_analysis(db, submission_id, current_user.id, course_id)
-    return success_response(data=ScoreResponse.model_validate(score).model_dump(), message="Hazard analysis submitted")
+    result = await db.execute(
+        select(FishboneDiagram).where(
+            FishboneDiagram.case_id == case_id,
+            FishboneDiagram.user_id == current_user.id,
+        )
+    )
+    fishbone = result.scalar_one_or_none()
+    if not fishbone:
+        raise HTTPException(status_code=404, detail="Fishbone not found")
+    return success_response(data=_serialize(fishbone))
 
 
-@router.post("/submit/fishbone/{submission_id}")
-async def submit_fishbone_route(
-    submission_id: int,
-    course_id: int,
+@router.put("/{case_id}/rca/fishbone")
+async def update_fishbone(
+    case_id: int,
+    data: FishboneDiagramUpdate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    score = await submit_fishbone(db, submission_id, current_user.id, course_id)
-    return success_response(data=ScoreResponse.model_validate(score).model_dump(), message="Fishbone submitted")
+    result = await db.execute(
+        select(FishboneDiagram).where(
+            FishboneDiagram.case_id == case_id,
+            FishboneDiagram.user_id == current_user.id,
+        )
+    )
+    fishbone = result.scalar_one_or_none()
+    if not fishbone:
+        raise HTTPException(status_code=404, detail="Fishbone not found")
+    if data.problem_statement is not None:
+        fishbone.problem_statement = data.problem_statement
+    await db.flush()
+    await db.refresh(fishbone)
+    return success_response(data=_serialize(fishbone))
 
-
-@router.post("/submit/five-whys/{submission_id}")
-async def submit_five_whys_route(
-    submission_id: int,
-    course_id: int,
+@router.post("/{case_id}/rca/fishbone/{fishbone_id}/nodes", status_code=201)
+async def add_fishbone_node(
+    case_id: int,
+    fishbone_id: int,
+    data: FishboneNodeCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    score = await submit_five_whys(db, submission_id, current_user.id, course_id)
-    return success_response(data=ScoreResponse.model_validate(score).model_dump(), message="5 Whys submitted")
+    fishbone = await db.get(FishboneDiagram, fishbone_id)
+    if not fishbone or fishbone.case_id != case_id:
+        raise HTTPException(status_code=404, detail="Fishbone not found")
+
+    node = FishboneNode(
+        fishbone_id=fishbone_id,
+        parent_id=data.parent_id,
+        label=data.label,
+        level=data.level,
+        order_index=data.order_index,
+    )
+    
+    db.add(node)
+    await db.flush()
+    await db.refresh(node)
+    return success_response(data=_serialize(node), status_code=201)
 
 
-@router.post("/submit/fmea-pip/{submission_id}")
-async def submit_fmea_pip_route(
-    submission_id: int,
-    course_id: int,
+@router.delete("/{case_id}/rca/fishbone/{fishbone_id}/nodes/{node_id}")
+async def delete_fishbone_node(
+    case_id: int,
+    fishbone_id: int,
+    node_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    score = await submit_fmea_pip(db, submission_id, current_user.id, course_id)
-    return success_response(data=ScoreResponse.model_validate(score).model_dump(), message="FMEA PIP submitted")
+    node = await db.get(FishboneNode, node_id)
+    if not node or node.fishbone_id != fishbone_id:
+        raise HTTPException(status_code=404, detail="Node not found")
+    await db.delete(node)
+    return success_response(message="Node deleted")
 
-
-@router.post("/submit/rca-pip/{submission_id}")
-async def submit_rca_pip_route(
-    submission_id: int,
-    course_id: int,
+@router.post("/{case_id}/rca/five-whys", status_code=201)
+async def create_five_whys(
+    case_id: int,
+    data: FiveWhysCreate,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    score = await submit_rca_pip(db, submission_id, current_user.id, course_id)
-    return success_response(data=ScoreResponse.model_validate(score).model_dump(), message="RCA PIP submitted")
+    case = await db.get(Case, case_id)
+    if not case or not case.is_active:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    five = FiveWhys(
+        case_id=case_id,
+        user_id=current_user.id,
+        problem=data.problem,
+        iterations=data.iterations,
+    )
+    db.add(five)
+    await db.flush()
+    await db.refresh(five)
+    return success_response(data=_serialize(five), status_code=201)
 
 
-@router.patch("/{score_id}/review")
-async def review_score(
-    score_id: int,
-    data: ScoreUpdate,
-    db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_instructor),
-):
-    score = await instructor_approve(db, score_id, current_user.id, data.instructor_score, data.feedback)
-    return success_response(data=ScoreResponse.model_validate(score).model_dump(), message="Score reviewed")
-
-
-@router.get("/user/{user_id}")
-async def get_user_scores(
-    user_id: int,
+@router.get("/{case_id}/rca/five-whys")
+async def get_five_whys(
+    case_id: int,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    result = await db.execute(select(Score).where(Score.user_id == user_id))
-    scores = result.scalars().all()
-    return success_response(data=[ScoreResponse.model_validate(s).model_dump() for s in scores])
+    result = await db.execute(
+        select(FiveWhys).where(
+            FiveWhys.case_id == case_id,
+            FiveWhys.user_id == current_user.id,
+        )
+    )
+    five = result.scalar_one_or_none()
+    if not five:
+        raise HTTPException(status_code=404, detail="Five Whys not found")
+    return success_response(data=_serialize(five))
+
+
+@router.put("/{case_id}/rca/five-whys")
+async def update_five_whys(
+    case_id: int,
+    data: FiveWhysUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(FiveWhys).where(
+            FiveWhys.case_id == case_id,
+            FiveWhys.user_id == current_user.id,
+        )
+    )
+    five = result.scalar_one_or_none()
+    if not five:
+        raise HTTPException(status_code=404, detail="Five Whys not found")
+    if data.problem is not None:
+        five.problem = data.problem
+    if data.iterations is not None:
+        five.iterations = data.iterations
+    await db.flush()
+    await db.refresh(five)
+    return success_response(data=_serialize(five))
+
+@router.post("/{case_id}/rca/pip", status_code=201)
+async def create_rca_pip(
+    case_id: int,
+    data: RcaPipCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    case = await db.get(Case, case_id)
+    if not case or not case.is_active:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    pip = RcaPip(
+        case_id=case_id,
+        user_id=current_user.id,
+        content=data.content,
+    )
+    db.add(pip)
+    await db.flush()
+    await db.refresh(pip)
+    return success_response(data=_serialize(pip), status_code=201)
+
+
+@router.get("/{case_id}/rca/pip")
+async def get_rca_pip(
+    case_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(RcaPip).where(
+            RcaPip.case_id == case_id,
+            RcaPip.user_id == current_user.id,
+        )
+    )
+    pip = result.scalar_one_or_none()
+    if not pip:
+        raise HTTPException(status_code=404, detail="RCA PIP not found")
+    return success_response(data=_serialize(pip))
+
+
+@router.put("/{case_id}/rca/pip")
+async def update_rca_pip(
+    case_id: int,
+    data: RcaPipUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(RcaPip).where(
+            RcaPip.case_id == case_id,
+            RcaPip.user_id == current_user.id,
+        )
+    )
+    pip = result.scalar_one_or_none()
+    if not pip:
+        raise HTTPException(status_code=404, detail="RCA PIP not found")
+    if data.content is not None:
+        pip.content = data.content
+    await db.flush()
+    await db.refresh(pip)
+    return success_response(data=_serialize(pip))

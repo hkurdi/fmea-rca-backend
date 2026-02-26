@@ -97,3 +97,4 @@ async def reset_password(db: AsyncSession, token: str, new_password: str) -> Non
 
     user.hashed_password = hash_password(new_password)
     await delete_reset_token(token)
+    await db.commit()

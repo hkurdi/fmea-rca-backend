@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 from functools import lru_cache
 
 
@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     APP_ENV: str = "development"
 
     DATABASE_URL: str
+    TEST_DATABASE_URL: str = ""
 
     REDIS_URL: str
 
@@ -18,9 +19,10 @@ class Settings(BaseSettings):
     RESEND_API_KEY: str
     RESEND_FROM_EMAIL: str
 
-    class Config:
-        env_file = ".env"
-        extra = "ignore"
+    model_config = SettingsConfigDict(
+        env_file=".env", 
+        extra="ignore"
+    )
 
 
 @lru_cache()

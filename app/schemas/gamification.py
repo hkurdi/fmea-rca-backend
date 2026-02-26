@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import datetime
 from app.models.gamification import BadgeType
 
@@ -11,7 +11,7 @@ class PointsResponse(BaseModel):
     reason: str
     created_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class BadgeResponse(BaseModel):
@@ -20,7 +20,7 @@ class BadgeResponse(BaseModel):
     badge_type: BadgeType
     earned_at: datetime
 
-    model_config = {"from_attributes": True}
+    model_config = ConfigDict(from_attributes=True)
 
 
 class LeaderboardEntry(BaseModel):

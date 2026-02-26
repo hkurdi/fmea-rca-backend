@@ -1,5 +1,6 @@
 # Python
 /.git
+/fmea-venv
 __pycache__/
 *.py[cod]
 *.pyo

@@ -47,6 +47,7 @@ async def check_and_award_badges(db: AsyncSession, user_id: int, course_id: int)
         badge = await award_badge(db, user_id, BadgeType.FIRST_CASE)
         if badge:
             awarded.append(badge)
+            await award_points(db, user_id, course_id, 10, "first_submission_bonus")
 
     result = await db.execute(
         select(func.count()).select_from(Points).where(

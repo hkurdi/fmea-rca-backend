@@ -191,3 +191,25 @@ async def get_rca_pip(
         raise HTTPException(status_code=404, detail="RCA PIP not found")
     
     return success_response(data=RcaPipResponse.model_validate(pip).model_dump())
+
+@router.post("/{case_id}/rca/pip", status_code=201)
+async def create_rca_pip(
+    case_id: int,
+    data: RcaPipCreate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    case = await db.get(Case, case_id)
+    if not case or not case.is_active:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    pip = RcaPip(
+        case_id=case_id,
+        user_id=current_user.id,
+        team_id=data.team_id,
+        content=data.content,
+    )
+    db.add(pip)
+    await db.flush()
+    await db.refresh(pip)
+    return success_response(data=RcaPipResponse.model_validate(pip).model_dump(), status_code=201)

@@ -51,7 +51,6 @@ async def create_team(
         select(Team).options(selectinload(Team.members)).where(Team.id == team.id)
     )
     team = result.scalar_one()
-    await db.commit()
     return success_response(
         data=TeamResponse.model_validate(team).model_dump(), 
         message="Team created", 
@@ -76,8 +75,7 @@ async def update_team(
     if data.name:
         team.name = data.name
     
-    await db.commit()
-    await db.refresh(team)
+    await db.flush()
     
     return success_response(
         data=TeamResponse.model_validate(team).model_dump(),
@@ -97,7 +95,7 @@ async def delete_team(
         raise AppException("Team not found", 404)
     
     await db.delete(team)
-    await db.commit()
+
     return success_response(message="Team deleted")
 
 
@@ -123,7 +121,7 @@ async def add_member(
     member = TeamMember(team_id=team_id, user_id=data.user_id)
     db.add(member)
     await db.flush()
-    await db.commit()
+
     await db.refresh(member)
     
     return success_response(
@@ -148,5 +146,5 @@ async def remove_member(
         raise AppException("Member not found", 404)
     
     await db.delete(member)
-    await db.commit()
+
     return success_response(message="Member removed")

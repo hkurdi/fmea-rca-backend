@@ -186,6 +186,7 @@ async def instructor_approve(db: AsyncSession, score_id: int, instructor_id: int
     score.instructor_score = instructor_score
     score.feedback = feedback
     score.reviewed_by = instructor_id
+    await db.flush()
 
     await award_points(db, score.user_id, score.course_id, 20, "Instructor approved submission")
     return score

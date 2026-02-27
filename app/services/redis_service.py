@@ -46,11 +46,3 @@ async def delete_reset_token(token: str):
         await client.delete(f"reset:{token}")
     finally:
         await client.aclose()
-        
-async def set_leaderboard_score(course_id: int, user_id: int, score: float):
-    client = _get_client()
-    try:
-        key = f"leaderboard:{course_id}"
-        await client.zadd(key, {str(user_id): score})
-    finally:
-        await client.aclose()

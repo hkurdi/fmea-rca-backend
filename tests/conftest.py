@@ -35,7 +35,7 @@ async def setup_db():
         await conn.run_sync(Base.metadata.drop_all)
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session")
 async def client():
     async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
@@ -47,7 +47,7 @@ async def db():
         yield session
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session")
 async def admin_token(client):
     await client.post("/auth/register", json={
         "email": "admin_test@fmea.com",
@@ -69,7 +69,7 @@ async def admin_token(client):
     return response.json()["data"]["access_token"]
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session")
 async def instructor_token(client):
     await client.post("/auth/register", json={
         "email": "instructor_test@fmea.com",
@@ -91,7 +91,7 @@ async def instructor_token(client):
     return response.json()["data"]["access_token"]
 
 
-@pytest_asyncio.fixture
+@pytest_asyncio.fixture(scope="session")
 async def student_token(client):
     await client.post("/auth/register", json={
         "email": "student_test@usf.edu",

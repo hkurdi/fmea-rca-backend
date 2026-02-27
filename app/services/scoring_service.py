@@ -5,7 +5,7 @@ from app.models.fmea import ProcessMap, HazardAnalysis, FmeaPip, SubmissionStatu
 from app.models.rca import FishboneDiagram, FiveWhys, RcaPip
 from app.models.case import CaseMode
 from app.core.exceptions import AppException
-from app.services.gamification_service import award_points
+from app.services.gamification_service import award_points, check_and_award_badges
 
 
 SUBMISSION_POINTS = {
@@ -48,6 +48,7 @@ async def submit_process_map(db: AsyncSession, submission_id: int, user_id: int,
     db.add(score)
     await db.flush()
     await award_points(db, user_id, course_id, SUBMISSION_POINTS["process_map"], SUBMISSION_REASONS["process_map"])
+    await check_and_award_badges(db, user_id, course_id)
     return score
 
 
@@ -72,6 +73,7 @@ async def submit_hazard_analysis(db: AsyncSession, submission_id: int, user_id: 
     db.add(score)
     await db.flush()
     await award_points(db, user_id, course_id, SUBMISSION_POINTS["hazard_analysis"], SUBMISSION_REASONS["hazard_analysis"])
+    await check_and_award_badges(db, user_id, course_id)
     return score
 
 
@@ -96,6 +98,7 @@ async def submit_fishbone(db: AsyncSession, submission_id: int, user_id: int, co
     db.add(score)
     await db.flush()
     await award_points(db, user_id, course_id, SUBMISSION_POINTS["fishbone"], SUBMISSION_REASONS["fishbone"])
+    await check_and_award_badges(db, user_id, course_id)
     return score
 
 
@@ -120,6 +123,7 @@ async def submit_five_whys(db: AsyncSession, submission_id: int, user_id: int, c
     db.add(score)
     await db.flush()
     await award_points(db, user_id, course_id, SUBMISSION_POINTS["five_whys"], SUBMISSION_REASONS["five_whys"])
+    await check_and_award_badges(db, user_id, course_id)
     return score
 
 
@@ -144,6 +148,7 @@ async def submit_fmea_pip(db: AsyncSession, submission_id: int, user_id: int, co
     db.add(score)
     await db.flush()
     await award_points(db, user_id, course_id, SUBMISSION_POINTS["fmea_pip"], SUBMISSION_REASONS["fmea_pip"])
+    await check_and_award_badges(db, user_id, course_id)
     return score
 
 
@@ -168,6 +173,7 @@ async def submit_rca_pip(db: AsyncSession, submission_id: int, user_id: int, cou
     db.add(score)
     await db.flush()
     await award_points(db, user_id, course_id, SUBMISSION_POINTS["rca_pip"], SUBMISSION_REASONS["rca_pip"])
+    await check_and_award_badges(db, user_id, course_id)
     return score
 
 

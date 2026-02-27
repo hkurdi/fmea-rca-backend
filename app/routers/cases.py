@@ -2,7 +2,8 @@ from fastapi import APIRouter, Depends
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
-from app.models.user import User
+from app.models.course import Course
+from app.models.user import User, UserRole
 from app.models.case import Case, CaseCourse
 from app.schemas.case import CaseCreate, CaseUpdate, CaseResponse, CaseCourseAssign
 from app.core.dependencies import get_current_user, get_current_instructor, get_current_admin
@@ -70,7 +71,7 @@ async def update_case(
     case = result.scalar_one_or_none()
     if not case:
         raise AppException("Case not found", 404)
-    if case.created_by != current_user.id:
+    if case.created_by != current_user.id and current_user.role != UserRole.ADMIN:
         raise AppException("Not authorized", 403)
 
     if data.title:
@@ -114,16 +115,24 @@ async def assign_case_to_course(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_instructor),
 ):
-    result = await db.execute(select(Case).where(Case.id == case_id))
-    case = result.scalar_one_or_none()
+    case = await db.get(Case, case_id)
     if not case:
         raise AppException("Case not found", 404)
+    
+    if case.created_by != current_user.id and current_user.role != UserRole.ADMIN:
+        raise AppException("Not authorized to assign this case", 403)
+
+    result = await db.execute(select(Course).where(Course.id == data.course_id))
+    if not result.scalar_one_or_none():
+        raise AppException("Course not found", 404)
 
     result = await db.execute(
-        select(CaseCourse).where(CaseCourse.case_id == case_id, CaseCourse.course_id == data.course_id)
+        select(CaseCourse).where(
+            CaseCourse.case_id == case_id, 
+            CaseCourse.course_id == data.course_id
+        )
     )
-    existing = result.scalar_one_or_none()
-    if existing:
+    if result.scalar_one_or_none():
         raise AppException("Case already assigned to this course", 409)
 
     assignment = CaseCourse(case_id=case_id, course_id=data.course_id)

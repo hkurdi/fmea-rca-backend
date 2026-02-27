@@ -18,6 +18,10 @@ async def check_case_and_lock(db: AsyncSession, case_id: int, submission, user_i
     case = result.scalar_one_or_none()
     if not case:
         raise AppException("Case not found", 404)
+    
+    if submission and submission.user_id != user_id:
+        raise AppException("Not authorized to edit this submission", 403)
+        
     if submission and submission.is_locked and not case.allow_resubmit:
         raise AppException("Resubmission not allowed", 403)
     if submission and submission.is_locked and case.mode == CaseMode.ASSESSMENT:

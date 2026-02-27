@@ -77,18 +77,22 @@ async def check_and_award_badges(db: AsyncSession, user_id: int, course_id: int)
 
 async def get_course_leaderboard(db: AsyncSession, course_id: int, top_n: int = 10) -> list[dict]:
     entries = await get_leaderboard(course_id, top_n)
-    leaderboard = []
+    if not entries:
+        return []
 
-    for rank, (user_id_str, score) in enumerate(entries, start=1):
-        user_id = int(user_id_str)
-        result = await db.execute(select(User).where(User.id == user_id))
-        user = result.scalar_one_or_none()
-        if user:
+    # Collect all IDs and fetch users in ONE query
+    user_ids = [int(uid_str) for uid_str, _ in entries]
+    result = await db.execute(select(User).where(User.id.in_(user_ids)))
+    users_map = {u.id: u.full_name for u in result.scalars().all()}
+
+    leaderboard = []
+    for rank, (uid_str, score) in enumerate(entries, start=1):
+        uid = int(uid_str)
+        if uid in users_map:
             leaderboard.append({
-                "user_id": user_id,
-                "full_name": user.full_name,
+                "user_id": uid,
+                "full_name": users_map[uid],
                 "total_points": int(score),
                 "rank": rank,
             })
-
     return leaderboard

@@ -51,7 +51,7 @@ async def check_and_award_badges(db: AsyncSession, user_id: int, course_id: int)
     result = await db.execute(
         select(func.count()).select_from(Points).where(
             Points.user_id == user_id,
-            Points.reason.contains("process_map"),
+            Points.reason == "process_map",
         )
     )
     fmea_count = result.scalar()
@@ -63,7 +63,7 @@ async def check_and_award_badges(db: AsyncSession, user_id: int, course_id: int)
     result = await db.execute(
         select(func.count()).select_from(Points).where(
             Points.user_id == user_id,
-            Points.reason.contains("fishbone"),
+            Points.reason == "fishbone",
         )
     )
     rca_count = result.scalar()

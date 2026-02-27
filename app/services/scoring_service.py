@@ -17,6 +17,15 @@ SUBMISSION_POINTS = {
     "rca_pip": 5,
 }
 
+SUBMISSION_REASONS = {
+    "process_map": "process_map",
+    "hazard_analysis": "hazard_analysis",
+    "fishbone": "fishbone",
+    "five_whys": "five_whys",
+    "fmea_pip": "fmea_pip",
+    "rca_pip": "rca_pip",
+}
+
 
 async def submit_process_map(db: AsyncSession, submission_id: int, user_id: int, course_id: int) -> Score:
     result = await db.execute(select(ProcessMap).where(ProcessMap.id == submission_id))
@@ -38,7 +47,7 @@ async def submit_process_map(db: AsyncSession, submission_id: int, user_id: int,
     )
     db.add(score)
     await db.flush()
-    await award_points(db, user_id, course_id, SUBMISSION_POINTS["process_map"], "Submitted process map")
+    await award_points(db, user_id, course_id, SUBMISSION_POINTS["process_map"], SUBMISSION_REASONS["process_map"])
     return score
 
 
@@ -62,7 +71,7 @@ async def submit_hazard_analysis(db: AsyncSession, submission_id: int, user_id: 
     )
     db.add(score)
     await db.flush()
-    await award_points(db, user_id, course_id, SUBMISSION_POINTS["hazard_analysis"], "Submitted hazard analysis")
+    await award_points(db, user_id, course_id, SUBMISSION_POINTS["hazard_analysis"], SUBMISSION_REASONS["hazard_analysis"])
     return score
 
 
@@ -86,7 +95,7 @@ async def submit_fishbone(db: AsyncSession, submission_id: int, user_id: int, co
     )
     db.add(score)
     await db.flush()
-    await award_points(db, user_id, course_id, SUBMISSION_POINTS["fishbone"], "Submitted fishbone diagram")
+    await award_points(db, user_id, course_id, SUBMISSION_POINTS["fishbone"], SUBMISSION_REASONS["fishbone"])
     return score
 
 
@@ -110,7 +119,7 @@ async def submit_five_whys(db: AsyncSession, submission_id: int, user_id: int, c
     )
     db.add(score)
     await db.flush()
-    await award_points(db, user_id, course_id, SUBMISSION_POINTS["five_whys"], "Submitted 5 whys analysis")
+    await award_points(db, user_id, course_id, SUBMISSION_POINTS["five_whys"], SUBMISSION_REASONS["five_whys"])
     return score
 
 
@@ -134,7 +143,7 @@ async def submit_fmea_pip(db: AsyncSession, submission_id: int, user_id: int, co
     )
     db.add(score)
     await db.flush()
-    await award_points(db, user_id, course_id, SUBMISSION_POINTS["fmea_pip"], "Submitted FMEA PIP")
+    await award_points(db, user_id, course_id, SUBMISSION_POINTS["fmea_pip"], SUBMISSION_REASONS["fmea_pip"])
     return score
 
 
@@ -158,7 +167,7 @@ async def submit_rca_pip(db: AsyncSession, submission_id: int, user_id: int, cou
     )
     db.add(score)
     await db.flush()
-    await award_points(db, user_id, course_id, SUBMISSION_POINTS["rca_pip"], "Submitted RCA PIP")
+    await award_points(db, user_id, course_id, SUBMISSION_POINTS["rca_pip"], SUBMISSION_REASONS["rca_pip"])
     return score
 
 

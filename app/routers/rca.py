@@ -173,6 +173,34 @@ async def create_five_whys(
         data=FiveWhysResponse.model_validate(five).model_dump(),
         status_code=201
     )
+    
+@router.put("/{case_id}/rca/five-whys")
+async def update_five_whys(
+    case_id: int,
+    data: FiveWhysUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(FiveWhys).where(
+            FiveWhys.case_id == case_id,
+            FiveWhys.user_id == current_user.id,
+        )
+    )
+    five = result.scalar_one_or_none()
+    if not five:
+        raise HTTPException(status_code=404, detail="Five Whys not found")
+
+    if five.is_locked:
+        raise HTTPException(status_code=403, detail="Submission is locked")
+
+    if data.problem is not None:
+        five.problem = data.problem
+    if data.iterations is not None:
+        five.iterations = data.iterations
+
+    await db.flush()
+    return success_response(data=FiveWhysResponse.model_validate(five).model_dump())
 
 @router.get("/{case_id}/rca/pip")
 async def get_rca_pip(
@@ -213,3 +241,30 @@ async def create_rca_pip(
     await db.flush()
     await db.refresh(pip)
     return success_response(data=RcaPipResponse.model_validate(pip).model_dump(), status_code=201)
+
+@router.put("/{case_id}/rca/pip/{submission_id}")
+async def update_rca_pip(
+    case_id: int,
+    submission_id: int,
+    data: RcaPipUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    result = await db.execute(
+        select(RcaPip).where(
+            RcaPip.id == submission_id,
+            RcaPip.user_id == current_user.id,
+        )
+    )
+    pip = result.scalar_one_or_none()
+    if not pip:
+        raise HTTPException(status_code=404, detail="RCA PIP not found")
+
+    if pip.is_locked:
+        raise HTTPException(status_code=403, detail="Submission is locked")
+
+    if data.content is not None:
+        pip.content = data.content
+
+    await db.flush()
+    return success_response(data=RcaPipResponse.model_validate(pip).model_dump())

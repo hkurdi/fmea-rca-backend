@@ -107,3 +107,12 @@ async def get_user_scores(
     result = await db.execute(select(Score).where(Score.user_id == user_id))
     scores = result.scalars().all()
     return success_response(data=[ScoreResponse.model_validate(s).model_dump() for s in scores])
+
+@router.get("/")
+async def get_all_scores(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_instructor),
+):
+    result = await db.execute(select(Score))
+    scores = result.scalars().all()
+    return success_response(data=[ScoreResponse.model_validate(s).model_dump() for s in scores])

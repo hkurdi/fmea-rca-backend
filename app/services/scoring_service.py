@@ -27,6 +27,52 @@ SUBMISSION_REASONS = {
 }
 
 
+def _validate_process_map(content: dict):
+    sections = content.get("sections", [])
+    if not sections:
+        raise AppException("Process map must have at least one section", 400)
+    if not any(s.get("title", "").strip() for s in sections):
+        raise AppException("Process map must have at least one section with a title", 400)
+
+
+def _validate_hazard_analysis(rows):
+    if isinstance(rows, dict):
+        row_list = rows.get("rows", [])
+    else:
+        row_list = rows or []
+    if not row_list:
+        raise AppException("Hazard analysis must have at least one row", 400)
+    if not any(r.get("failureMode", "").strip() for r in row_list):
+        raise AppException("Hazard analysis must have at least one row with a failure mode", 400)
+
+
+def _validate_fmea_pip(content: dict):
+    if not content.get("problem", "").strip():
+        raise AppException("FMEA PIP must have a problem statement", 400)
+    if not content.get("plan", "").strip():
+        raise AppException("FMEA PIP must have an improvement plan", 400)
+
+
+def _validate_fishbone(problem_statement: str):
+    if not problem_statement or not problem_statement.strip():
+        raise AppException("Fishbone diagram must have a problem statement", 400)
+
+
+def _validate_five_whys(problem: str, iterations: dict):
+    if not problem or not problem.strip():
+        raise AppException("5 Whys must have a problem statement", 400)
+    answers = [v.get("answer", "").strip() for v in iterations.values()]
+    if not any(answers):
+        raise AppException("5 Whys must have at least one answer filled in", 400)
+
+
+def _validate_rca_pip(content: dict):
+    if not content.get("problem", "").strip():
+        raise AppException("RCA PIP must have a problem statement", 400)
+    if not content.get("plan", "").strip():
+        raise AppException("RCA PIP must have an improvement plan", 400)
+
+
 async def submit_process_map(db: AsyncSession, submission_id: int, user_id: int, course_id: int) -> Score:
     result = await db.execute(select(ProcessMap).where(ProcessMap.id == submission_id))
     submission = result.scalar_one_or_none()
@@ -34,6 +80,8 @@ async def submit_process_map(db: AsyncSession, submission_id: int, user_id: int,
         raise AppException("Process map not found", 404)
     if submission.is_locked:
         raise AppException("Submission is locked", 403)
+
+    _validate_process_map(submission.content or {})
 
     submission.status = SubmissionStatus.SUBMITTED
     submission.is_locked = True
@@ -60,6 +108,8 @@ async def submit_hazard_analysis(db: AsyncSession, submission_id: int, user_id: 
     if submission.is_locked:
         raise AppException("Submission is locked", 403)
 
+    _validate_hazard_analysis(submission.rows or {})
+
     submission.status = SubmissionStatus.SUBMITTED
     submission.is_locked = True
 
@@ -84,6 +134,8 @@ async def submit_fishbone(db: AsyncSession, submission_id: int, user_id: int, co
         raise AppException("Fishbone diagram not found", 404)
     if submission.is_locked:
         raise AppException("Submission is locked", 403)
+
+    _validate_fishbone(submission.problem_statement)
 
     submission.status = "submitted"
     submission.is_locked = True
@@ -110,6 +162,8 @@ async def submit_five_whys(db: AsyncSession, submission_id: int, user_id: int, c
     if submission.is_locked:
         raise AppException("Submission is locked", 403)
 
+    _validate_five_whys(submission.problem, submission.iterations or {})
+
     submission.status = "submitted"
     submission.is_locked = True
 
@@ -135,6 +189,8 @@ async def submit_fmea_pip(db: AsyncSession, submission_id: int, user_id: int, co
     if submission.is_locked:
         raise AppException("Submission is locked", 403)
 
+    _validate_fmea_pip(submission.content or {})
+
     submission.status = SubmissionStatus.SUBMITTED
     submission.is_locked = True
 
@@ -159,6 +215,8 @@ async def submit_rca_pip(db: AsyncSession, submission_id: int, user_id: int, cou
         raise AppException("RCA PIP not found", 404)
     if submission.is_locked:
         raise AppException("Submission is locked", 403)
+
+    _validate_rca_pip(submission.content or {})
 
     submission.status = "submitted"
     submission.is_locked = True

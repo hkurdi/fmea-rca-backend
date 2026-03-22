@@ -20,9 +20,6 @@ python-multipart==0.0.12
 # Redis
 redis==5.2.0
 
-# Email
-resend==2.4.0
-
 # Utils
 python-dotenv==1.0.1
 

@@ -3,6 +3,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from app.database import get_db
 from app.models.course import Course
+from app.models.fmea import FmeaPip, HazardAnalysis, ProcessMap
+from app.models.rca import FishboneDiagram, FiveWhys, RcaPip
 from app.models.user import User, UserRole
 from app.models.case import Case, CaseCourse
 from app.schemas.case import CaseCreate, CaseUpdate, CaseResponse, CaseCourseAssign
@@ -139,3 +141,32 @@ async def assign_case_to_course(
     db.add(assignment)
     await db.flush()
     return success_response(message="Case assigned to course", status_code=201)
+
+@router.get("/{case_id}/progress")
+async def get_case_progress(
+    case_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    uid = current_user.id
+
+    async def is_locked(model, **kwargs):
+        result = await db.execute(select(model).where(model.case_id == case_id, model.user_id == uid, **kwargs))
+        row = result.scalar_one_or_none()
+        return bool(row and row.is_locked)
+
+    sections = {
+        "processMap":      await is_locked(ProcessMap),
+        "hazardAnalysis":  await is_locked(HazardAnalysis),
+        "fmeaPip":         await is_locked(FmeaPip),
+        "fishbone":        await is_locked(FishboneDiagram),
+        "fiveWhys":        await is_locked(FiveWhys),
+        "rcaPip":          await is_locked(RcaPip),
+    }
+    completed = sum(sections.values())
+    return success_response(data={
+        "sections": sections,
+        "completed": completed,
+        "total": 6,
+        "percent": round((completed / 6) * 100),
+    })

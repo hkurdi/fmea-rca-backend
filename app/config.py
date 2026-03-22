@@ -16,8 +16,8 @@ class Settings(BaseSettings):
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
     RESET_TOKEN_EXPIRE_MINUTES: int = 15
 
-    RESEND_API_KEY: str
-    RESEND_FROM_EMAIL: str
+    GMAIL_USER: str = ""
+    GMAIL_APP_PASSWORD: str = ""
 
     model_config = SettingsConfigDict(
         env_file=".env", 

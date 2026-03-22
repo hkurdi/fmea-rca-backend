@@ -14,7 +14,7 @@ router = APIRouter()
 @router.get("/")
 async def get_all_users(
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_admin),
+    current_user: User = Depends(get_current_user),
 ):
     result = await db.execute(select(User))
     users = result.scalars().all()

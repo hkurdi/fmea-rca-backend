@@ -5,7 +5,7 @@ from sqlalchemy.orm import selectinload
 
 from app.database import get_db
 from app.core.response import success_response
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_current_instructor
 from app.models.user import User
 from app.models.rca import FishboneDiagram, FishboneNode, FiveWhys, RcaPip
 from app.models.case import Case
@@ -58,7 +58,6 @@ async def get_fishbone(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-
     result = await db.execute(
         select(FishboneDiagram)
         .options(selectinload(FishboneDiagram.nodes))
@@ -267,4 +266,50 @@ async def update_rca_pip(
         pip.content = data.content
 
     await db.flush()
+    return success_response(data=RcaPipResponse.model_validate(pip).model_dump())
+
+@router.get("/rca/submission/fishbone/{submission_id}")
+async def get_fishbone_by_id(
+    submission_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_instructor),
+):
+    result = await db.execute(
+        select(FishboneDiagram)
+        .options(selectinload(FishboneDiagram.nodes))
+        .where(FishboneDiagram.id == submission_id)
+    )
+    fishbone = result.scalar_one_or_none()
+    if not fishbone:
+        raise HTTPException(status_code=404, detail="Fishbone not found")
+    return success_response(data=FishboneDiagramResponse.model_validate(fishbone).model_dump())
+
+
+@router.get("/rca/submission/five-whys/{submission_id}")
+async def get_five_whys_by_id(
+    submission_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_instructor),
+):
+    result = await db.execute(
+        select(FiveWhys).where(FiveWhys.id == submission_id)
+    )
+    five = result.scalar_one_or_none()
+    if not five:
+        raise HTTPException(status_code=404, detail="Five Whys not found")
+    return success_response(data=FiveWhysResponse.model_validate(five).model_dump())
+
+
+@router.get("/rca/submission/pip/{submission_id}")
+async def get_rca_pip_by_id(
+    submission_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_instructor),
+):
+    result = await db.execute(
+        select(RcaPip).where(RcaPip.id == submission_id)
+    )
+    pip = result.scalar_one_or_none()
+    if not pip:
+        raise HTTPException(status_code=404, detail="RCA PIP not found")
     return success_response(data=RcaPipResponse.model_validate(pip).model_dump())

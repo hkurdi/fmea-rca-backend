@@ -6,7 +6,7 @@ from app.models.user import User
 from app.models.fmea import ProcessMap, HazardAnalysis, FmeaPip, SubmissionStatus
 from app.models.case import Case, CaseMode
 from app.schemas.fmea import ProcessMapCreate, ProcessMapUpdate, ProcessMapResponse, HazardAnalysisCreate, HazardAnalysisUpdate, HazardAnalysisResponse, FmeaPipCreate, FmeaPipUpdate, FmeaPipResponse
-from app.core.dependencies import get_current_user
+from app.core.dependencies import get_current_user, get_current_instructor
 from app.core.response import success_response
 from app.core.exceptions import AppException
 
@@ -219,3 +219,41 @@ async def update_fmea_pip(
         data=FmeaPipResponse.model_validate(submission).model_dump(),
         message="FMEA PIP updated",
     )
+
+@router.get("/fmea/submission/process-map/{submission_id}")
+async def get_process_map_by_id(
+    submission_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_instructor),
+):
+    result = await db.execute(select(ProcessMap).where(ProcessMap.id == submission_id))
+    submission = result.scalar_one_or_none()
+    if not submission:
+        raise AppException("Process map not found", 404)
+    return success_response(data=ProcessMapResponse.model_validate(submission).model_dump())
+
+
+@router.get("/fmea/submission/hazard-analysis/{submission_id}")
+async def get_hazard_analysis_by_id(
+    submission_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_instructor),
+):
+    result = await db.execute(select(HazardAnalysis).where(HazardAnalysis.id == submission_id))
+    submission = result.scalar_one_or_none()
+    if not submission:
+        raise AppException("Hazard analysis not found", 404)
+    return success_response(data=HazardAnalysisResponse.model_validate(submission).model_dump())
+
+
+@router.get("/fmea/submission/pip/{submission_id}")
+async def get_fmea_pip_by_id(
+    submission_id: int,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_instructor),
+):
+    result = await db.execute(select(FmeaPip).where(FmeaPip.id == submission_id))
+    submission = result.scalar_one_or_none()
+    if not submission:
+        raise AppException("FMEA PIP not found", 404)
+    return success_response(data=FmeaPipResponse.model_validate(submission).model_dump())

@@ -46,7 +46,7 @@ async def get_current_student(user: User = Depends(get_current_user)) -> User:
 
 
 async def get_current_instructor(user: User = Depends(get_current_user)) -> User:
-    if user.role != UserRole.INSTRUCTOR:
+    if user.role not in (UserRole.INSTRUCTOR, UserRole.ADMIN):
         raise HTTPException(status_code=403, detail="Instructors only")
     return user
 
